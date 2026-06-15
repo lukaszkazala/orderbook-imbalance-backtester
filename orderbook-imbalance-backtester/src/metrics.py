@@ -16,12 +16,12 @@ def calculate_metrics(trades, initial_capital=10000):
 
     number_of_trades = len(trades)
 
-    winning_trades = trades[trades["return_pct"] > 0]
+    winning_trades = trades[trades["net_return_pct"] > 0]
     win_rate = len(winning_trades) / number_of_trades
 
-    average_trade_return = trades["return_pct"].mean()
-    best_trade = trades["return_pct"].max()
-    worst_trade = trades["return_pct"].min()
+    average_trade_return = trades["net_return_pct"].mean()
+    best_trade = trades["net_return_pct"].max()
+    worst_trade = trades["net_return_pct"].min()
 
     return {
         "initial_capital": initial_capital,
