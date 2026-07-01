@@ -8,31 +8,37 @@ from src.orderbook_loader import fetch_orderbook, summarize_orderbook
 
 
 def collect_orderbook_data(
-    symbol="BTCUSDT",
-    interval_seconds=5,
-    iterations=None
-):
-    """
-    Collect order book snapshots and save them to CSV.
+    symbol: str = "BTCUSDT",
+    interval_seconds: int = 5,
+    iterations: int | None = None,
+    output_path: str = "data/orderbook_snapshots.csv",
+) -> pd.DataFrame:
+    """Collect Binance order book snapshots and save them to a CSV file.
 
-    If iterations is None, the collector runs until stopped manually.
-    """
+    Args:
+        symbol: Trading pair symbol, for example "BTCUSDT".
+        interval_seconds: Delay between consecutive API requests.
+        iterations: Number of snapshots to collect. If None, runs until stopped.
+        output_path: Path where collected snapshots should be saved.
 
+    Returns:
+        DataFrame with collected order book summary records.
+    """
     records = []
-    i = 0
+    iteration = 0
 
     try:
-        while iterations is None or i < iterations:
+        while iterations is None or iteration < iterations:
             bids, asks = fetch_orderbook(symbol=symbol, limit=100)
 
             summary = summarize_orderbook(bids, asks)
             summary["timestamp"] = datetime.utcnow()
 
             records.append(summary)
-            i += 1
+            iteration += 1
 
             print(
-                f"[{i}] "
+                f"[{iteration}] "
                 f"imbalance={summary['imbalance']:.4f} "
                 f"mid_price={summary['mid_price']:.2f}"
             )
@@ -44,13 +50,12 @@ def collect_orderbook_data(
 
     df = pd.DataFrame(records)
 
-    os.makedirs("data", exist_ok=True)
-    output_path = "data/orderbook_snapshots.csv"
+    output_dir = os.path.dirname(output_path)
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
 
-    if os.path.exists(output_path):
-        df.to_csv(output_path, mode="a", header=False, index=False)
-    else:
-        df.to_csv(output_path, index=False)
+    file_exists = os.path.exists(output_path)
+    df.to_csv(output_path, mode="a" if file_exists else "w", header=not file_exists, index=False)
 
     print(f"\nSaved {len(df)} rows to {output_path}")
 

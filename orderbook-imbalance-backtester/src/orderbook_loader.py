@@ -5,26 +5,22 @@ import pandas as pd
 BINANCE_DEPTH_URL = "https://api.binance.com/api/v3/depth"
 
 
-def fetch_orderbook(symbol: str = "BTCUSDT", limit: int = 100):
-    """
-    Fetch current order book snapshot from Binance.
+def fetch_orderbook(
+    symbol: str = "BTCUSDT",
+    limit: int = 100,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Fetch the current order book snapshot from Binance.
 
-    Parameters:
-    symbol : str
-        Trading pair, for example BTCUSDT.
-    limit : int
-        Number of order book levels to download.
+    Args:
+        symbol: Trading pair symbol, for example "BTCUSDT".
+        limit: Number of order book levels to download.
 
     Returns:
-    bids : pandas.DataFrame
-        Buy orders: price and quantity.
-    asks : pandas.DataFrame
-        Sell orders: price and quantity.
+        Tuple containing bids and asks as DataFrames with price and quantity columns.
     """
-
     params = {
         "symbol": symbol,
-        "limit": limit
+        "limit": limit,
     }
 
     response = requests.get(BINANCE_DEPTH_URL, params=params, timeout=10)
@@ -32,23 +28,22 @@ def fetch_orderbook(symbol: str = "BTCUSDT", limit: int = 100):
 
     orderbook = response.json()
 
-    bids = pd.DataFrame(orderbook["bids"], columns=["price", "quantity"])
-    asks = pd.DataFrame(orderbook["asks"], columns=["price", "quantity"])
-
-    bids["price"] = bids["price"].astype(float)
-    bids["quantity"] = bids["quantity"].astype(float)
-
-    asks["price"] = asks["price"].astype(float)
-    asks["quantity"] = asks["quantity"].astype(float)
+    bids = pd.DataFrame(orderbook["bids"], columns=["price", "quantity"]).astype(float)
+    asks = pd.DataFrame(orderbook["asks"], columns=["price", "quantity"]).astype(float)
 
     return bids, asks
 
 
-def summarize_orderbook(bids: pd.DataFrame, asks: pd.DataFrame):
-    """
-    Create a simple one-row summary of the order book.
-    """
+def summarize_orderbook(bids: pd.DataFrame, asks: pd.DataFrame) -> dict[str, float]:
+    """Create a one-row numerical summary of an order book snapshot.
 
+    Args:
+        bids: DataFrame with bid price levels and quantities.
+        asks: DataFrame with ask price levels and quantities.
+
+    Returns:
+        Dictionary containing best bid, best ask, spread, volumes and imbalance.
+    """
     best_bid = bids["price"].max()
     best_ask = asks["price"].min()
 
@@ -58,16 +53,15 @@ def summarize_orderbook(bids: pd.DataFrame, asks: pd.DataFrame):
     mid_price = (best_bid + best_ask) / 2
     spread = best_ask - best_bid
 
-    imbalance = (bid_volume - ask_volume) / (bid_volume + ask_volume)
+    total_volume = bid_volume + ask_volume
+    imbalance = 0.0 if total_volume == 0 else (bid_volume - ask_volume) / total_volume
 
-    summary = {
+    return {
         "best_bid": best_bid,
         "best_ask": best_ask,
         "mid_price": mid_price,
         "spread": spread,
         "bid_volume": bid_volume,
         "ask_volume": ask_volume,
-        "imbalance": imbalance
+        "imbalance": imbalance,
     }
-
-    return summary
